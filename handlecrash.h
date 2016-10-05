@@ -17,14 +17,14 @@
 #define HC_MAX_STACK_FRAMES 64
 #endif
 
-#if __GNUC__ > 4 || defined(__clang__)
-#define HC_REGFMT16 "%016llx"
-#define HC_REGFMT8 "%08llx"
-#define HC_REGFMT4 "%04llx"
-#else
+#if __GNUC__ < 5 || (defined(__clang__) && (__clang_major__ <= 3 && __clang_minor__ < 8))
 #define HC_REGFMT16 "%016lx"
 #define HC_REGFMT8 "%08lx"
 #define HC_REGFMT4 "%04lx"
+#else
+#define HC_REGFMT16 "%016llx"
+#define HC_REGFMT8 "%08llx"
+#define HC_REGFMT4 "%04llx"
 #endif
 
 void hc_handler_posix(int sig, siginfo_t* siginfo, void* context)
