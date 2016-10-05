@@ -1,5 +1,10 @@
 #pragma once
 
+/***
+ * handlecrash.h
+ * https://github.com/angelog/handlecrash.h
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 
