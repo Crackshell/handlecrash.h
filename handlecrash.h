@@ -52,8 +52,7 @@ void hc_handler_posix(int sig, siginfo_t* siginfo, void* context)
 	hc_print("***\n");
 
 	hc_print("***        Signal: ");
-	switch (sig)
-	{
+	switch (sig) {
 		case SIGSEGV: hc_print("SIGSEGV"); break;
 		case SIGILL: hc_print("SIGILL"); break;
 		default: hc_print("???"); break;
