@@ -20,9 +20,11 @@
 #if __GNUC__ > 4
 #define HC_REGFMT16 "%016llx"
 #define HC_REGFMT8 "%08llx"
+#define HC_REGFMT4 "%04llx"
 #else
-#define HC_REGFMT16 "%016x"
-#define HC_REGFMT8 "%08x"
+#define HC_REGFMT16 "%016lx"
+#define HC_REGFMT8 "%08lx"
+#define HC_REGFMT4 "%04lx"
 #endif
 
 void hc_handler_posix(int sig, siginfo_t* siginfo, void* context)
@@ -94,7 +96,7 @@ void hc_handler_posix(int sig, siginfo_t* siginfo, void* context)
 	hc_print("***\n");
 	hc_print("***   RIP: " HC_REGFMT16 "     EFL: " HC_REGFMT8 "\n", RV(REG_RIP), RV(REG_EFL));
 	hc_print("***\n");
-	hc_print("***    CS: %04llx    FS: %04llx      GS: %04llx\n", RV(REG_CSGSFS) & 0xFFFF, (RV(REG_CSGSFS) >> 16) & 0xFFFF, (RV(REG_CSGSFS) >> 32) & 0xFFFF);
+	hc_print("***    CS: " HC_REGFMT4 "    FS: " HC_REGFMT4 "      GS: " HC_REGFMT4 "\n", RV(REG_CSGSFS) & 0xFFFF, (RV(REG_CSGSFS) >> 16) & 0xFFFF, (RV(REG_CSGSFS) >> 32) & 0xFFFF);
 	hc_print("***\n");
 	for (int i = 0; i < 8; i += 2) {
 		hc_print("***   ST(%d) %04hx %08x%08x      ST(%d) %04hx %08x%08x\n", i, FPSTe(i), FPSTsa(i), FPSTsb(i), i + 1, FPSTe(i + 1), FPSTsa(i + 1), FPSTsb(i + 1));
@@ -156,14 +158,14 @@ void hc_handler_posix(int sig, siginfo_t* siginfo, void* context)
 
 void hc_install()
 {
-	stack_t ss = {};
+	stack_t ss;
 	ss.ss_sp = malloc(SIGSTKSZ);
 	ss.ss_size = SIGSTKSZ;
 	ss.ss_flags = 0;
 
 	if (sigaltstack(&ss, 0) != 0) { err(1, "sigaltstack"); }
 
-	struct sigaction sig_action = {};
+	struct sigaction sig_action;
 	sig_action.sa_sigaction = hc_handler_posix;
 	sigemptyset(&sig_action.sa_mask);
 
