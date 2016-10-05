@@ -17,6 +17,14 @@
 #define HC_MAX_STACK_FRAMES 64
 #endif
 
+#if __GNUC__ > 4
+#define HC_REGFMT16 "%016llx"
+#define HC_REGFMT8 "%08llx"
+#else
+#define HC_REGFMT16 "%016x"
+#define HC_REGFMT8 "%08x"
+#endif
+
 void hc_handler_posix(int sig, siginfo_t* siginfo, void* context)
 {
 #define hc_print(fmt, ...) printf(fmt, ##__VA_ARGS__); fprintf(fpCrash, fmt, ##__VA_ARGS__);
@@ -77,14 +85,14 @@ void hc_handler_posix(int sig, siginfo_t* siginfo, void* context)
 	#define FPSTsb(i) ctx->uc_mcontext.fpregs->_st[i].significand[1] << 16 | ctx->uc_mcontext.fpregs->_st[i].significand[0]
 
 #ifdef __LP64__
-	hc_print("***   RAX: %016llx     RBX: %016llx     RCX: %016llx\n", RV(REG_RAX), RV(REG_RBX), RV(REG_RCX));
-	hc_print("***   RDX: %016llx     RSI: %016llx     RDI: %016llx\n", RV(REG_RDX), RV(REG_RSI), RV(REG_RDI));
-	hc_print("***   RBP: %016llx      R8: %016llx      R9: %016llx\n", RV(REG_RBP), RV( REG_R8), RV( REG_R9));
-	hc_print("***   R10: %016llx     R11: %016llx     R12: %016llx\n", RV(REG_R10), RV(REG_R11), RV(REG_R12));
-	hc_print("***   R13: %016llx     R14: %016llx     R15: %016llx\n", RV(REG_R13), RV(REG_R14), RV(REG_R15));
-	hc_print("***   RSP: %016llx\n", RV(REG_RSP));
+	hc_print("***   RAX: " HC_REGFMT16 "     RBX: " HC_REGFMT16 "     RCX: " HC_REGFMT16 "\n", RV(REG_RAX), RV(REG_RBX), RV(REG_RCX));
+	hc_print("***   RDX: " HC_REGFMT16 "     RSI: " HC_REGFMT16 "     RDI: " HC_REGFMT16 "\n", RV(REG_RDX), RV(REG_RSI), RV(REG_RDI));
+	hc_print("***   RBP: " HC_REGFMT16 "      R8: " HC_REGFMT16 "      R9: " HC_REGFMT16 "\n", RV(REG_RBP), RV( REG_R8), RV( REG_R9));
+	hc_print("***   R10: " HC_REGFMT16 "     R11: " HC_REGFMT16 "     R12: " HC_REGFMT16 "\n", RV(REG_R10), RV(REG_R11), RV(REG_R12));
+	hc_print("***   R13: " HC_REGFMT16 "     R14: " HC_REGFMT16 "     R15: " HC_REGFMT16 "\n", RV(REG_R13), RV(REG_R14), RV(REG_R15));
+	hc_print("***   RSP: " HC_REGFMT16 "\n", RV(REG_RSP));
 	hc_print("***\n");
-	hc_print("***   RIP: %016llx     EFL: %08llx\n", RV(REG_RIP), RV(REG_EFL));
+	hc_print("***   RIP: " HC_REGFMT16 "     EFL: " HC_REGFMT8 "\n", RV(REG_RIP), RV(REG_EFL));
 	hc_print("***\n");
 	hc_print("***    CS: %04llx    FS: %04llx      GS: %04llx\n", RV(REG_CSGSFS) & 0xFFFF, (RV(REG_CSGSFS) >> 16) & 0xFFFF, (RV(REG_CSGSFS) >> 32) & 0xFFFF);
 	hc_print("***\n");
