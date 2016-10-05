@@ -17,7 +17,7 @@
 #define HC_MAX_STACK_FRAMES 64
 #endif
 
-#if __GNUC__ > 4
+#if __GNUC__ > 4 || defined(__clang__)
 #define HC_REGFMT16 "%016llx"
 #define HC_REGFMT8 "%08llx"
 #define HC_REGFMT4 "%04llx"
