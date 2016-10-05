@@ -1,6 +1,6 @@
 # handlecrash.h
 
-Single-header crash handler for C++ programs.
+Single-header crash handler for C++ programs. Writes a crash dump with stack trace to `/tmp` and also outputs it to stdout.
 
 Currently only supports Linux x86 and x64.
 
