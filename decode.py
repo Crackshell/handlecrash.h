@@ -45,7 +45,7 @@ with open(sys.argv[1]) as f:
 						print '***   ' + frame[0] + '\t' + frame[1] + '\t' + frame[2]
 					else:
 						parse = addr.split(' at ')
-						print '***   ' + frame[0] + '\t' + parse[1] + '\t' + parse[0]
+						print '***   ' + frame[0] + '\t' + parse[0] + '\t' + parse[1]
 				print line
 				continue
 			backtrace.append(line[6:].split('\t'))
