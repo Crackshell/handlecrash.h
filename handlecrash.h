@@ -12,7 +12,7 @@
 #define HC_MAX_STACK_FRAMES 64
 #endif
 
-void posix_signal_handler(int sig, siginfo_t* siginfo, void* context)
+void hc_handler_posix(int sig, siginfo_t* siginfo, void* context)
 {
 #define hc_print(fmt, ...) printf(fmt, ##__VA_ARGS__); fprintf(fpCrash, fmt, ##__VA_ARGS__);
 
@@ -151,7 +151,7 @@ void hc_install()
 	if (sigaltstack(&ss, 0) != 0) { err(1, "sigaltstack"); }
 
 	struct sigaction sig_action = {};
-	sig_action.sa_sigaction = posix_signal_handler;
+	sig_action.sa_sigaction = hc_handler_posix;
 	sigemptyset(&sig_action.sa_mask);
 
 	#ifdef __APPLE__
