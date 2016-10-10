@@ -29,7 +29,7 @@ int main()
 Then, to decode a crash report:
 ```
 $ cd folder/with/debug/bins
-$ ~/handlecrash.h/is/decode.py /tmp/crash_1476112323.log
+$ ~/handlecrash.h/decode.py /tmp/crash_1476112323.log
 ```
 
 ## Options
