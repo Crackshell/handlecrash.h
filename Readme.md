@@ -1,6 +1,6 @@
 # handlecrash.h
 
-Single-header crash handler for C++ programs. Writes a crash dump with stack trace to `/tmp` and also outputs it to stdout.
+Single-header crash handler for C++ programs. Writes a crash dump with stack trace and compressed stack memory to `/tmp` and also outputs it to stdout.
 
 Currently only supports Linux x86 and x64.
 
@@ -22,4 +22,10 @@ int main()
 
 	return 0;
 }
+```
+
+Then, to decode a crash report:
+```
+$ cd folder/with/debug/bins
+$ ~/handlecrash.h/is/decode.py /tmp/crash_1476112323.log
 ```
