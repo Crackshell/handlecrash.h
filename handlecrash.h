@@ -132,6 +132,7 @@ static bool _hc_dumpstack_compression = true;
 void hc_handler_posix(int sig, siginfo_t* siginfo, void* context)
 {
 #define hc_print(fmt, ...) printf(fmt, ##__VA_ARGS__); fprintf(fpCrash, fmt, ##__VA_ARGS__);
+#define hc_print_file(fmt, ...) fprintf(fpCrash, fmt, ##__VA_ARGS__);
 
 	char fnmBuffer[128];
 	sprintf(fnmBuffer, "/tmp/crash_%ld.log", time(0));
@@ -267,7 +268,7 @@ void hc_handler_posix(int sig, siginfo_t* siginfo, void* context)
 		if (dumpStackBegin > dumpStackEnd) {
 			hc_print("*** Could not dump stack memory due to invalid pointers: %p > %p!\n", dumpStackBegin, dumpStackEnd);
 		} else {
-			hc_print("*** Stack memory: %p - %p\n", dumpStackBegin, dumpStackEnd);
+			hc_print_file("*** Stack memory: %p - %p\n", dumpStackBegin, dumpStackEnd);
 
 			unsigned char* compressed = (unsigned char*)dumpStackBegin;
 			int compressedSize = (int)(dumpStackEnd - dumpStackBegin);
@@ -280,7 +281,7 @@ void hc_handler_posix(int sig, siginfo_t* siginfo, void* context)
 				compressedSize = retSize;
 
 				if (ret != MZ_OK) {
-					hc_print("***   Compression failed: %d\n", ret);
+					hc_print_file("***   Compression failed: %d\n", ret);
 					compressed = dumpStackBegin;
 					compressedSize = (int)(dumpStackEnd - dumpStackBegin);
 				}
@@ -294,7 +295,7 @@ void hc_handler_posix(int sig, siginfo_t* siginfo, void* context)
 			membuffer[120] = '\0';
 			while (memlen > 0) {
 				memcpy(membuffer, memp, 120);
-				hc_print("***   %s\n", membuffer);
+				hc_print_file("***   %s\n", membuffer);
 				memp += 120;
 				memlen -= 120;
 			}
