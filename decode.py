@@ -5,6 +5,8 @@
 
 import re
 import sys
+import zlib
+import base64
 import subprocess
 
 def addr2line(name, ptr, intext = False):
@@ -26,6 +28,9 @@ if len(sys.argv) == 1:
 with open(sys.argv[1]) as f:
 	readingBacktrace = False
 	backtrace = []
+
+	readingStackMemory = False
+	stackMemory = ''
 
 	for line in f:
 		line = line.strip()
@@ -49,7 +54,16 @@ with open(sys.argv[1]) as f:
 				print line
 				continue
 			backtrace.append(line[6:].split('\t'))
+		elif readingStackMemory:
+			stackMemory += line[4:]
 		else:
 			if line[4:13] == 'Backtrace':
 				readingBacktrace = True
+			elif line[4:17] == 'Stack memory:':
+				readingStackMemory = True
+				continue
 			print line
+
+	with open(sys.argv[1] + '.bin', 'wb') as fbin:
+		compressed = base64.b64decode(stackMemory)
+		fbin.write(zlib.decompress(compressed))
