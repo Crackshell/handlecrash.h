@@ -323,7 +323,7 @@ void hc_install(int dumpstack = hc_dumpstack_all, bool dumpstackCompression = tr
 	_hc_dumpstack_type = dumpstack;
 	_hc_dumpstack_compression = dumpstackCompression;
 
-	size_t altstacksize = SIGSTKSZ * 128;
+	size_t altstacksize = MINSIGSTKSZ + 135 * 1000;
 
 	stack_t ss;
 	ss.ss_sp = malloc(altstacksize);
