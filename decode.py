@@ -15,7 +15,10 @@ def addr2line(name, ptr, intext = False):
 		args.append('-j')
 		args.append('.text')
 
-	p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	try:
+		p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	except:
+		return False
 	out, err = p.communicate()
 	if out.find('??') != -1:
 		return False
