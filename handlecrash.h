@@ -14,7 +14,17 @@
 #include <signal.h>
 #include <err.h>
 
+#ifndef HC_NO_COMPRESSION
 #include "miniz.c"
+#endif
+
+#ifndef HC_ALTSTACK_SIZE
+#define HC_ALTSTACK_SIZE MINSIGSTKSZ + 135 * 1000
+#endif
+
+#ifndef HC_LOG_DESTINATION
+#define HC_LOG_DESTINATION "/tmp"
+#endif
 
 /**
  * `b64.h' - b64
@@ -113,7 +123,9 @@ enum
 };
 
 static int _hc_dumpstack_type = hc_dumpstack_fromsp;
+#ifndef HC_NO_COMPRESSION
 static bool _hc_dumpstack_compression = true;
+#endif
 
 #ifndef HC_MAX_STACK_FRAMES
 #define HC_MAX_STACK_FRAMES 64
@@ -134,8 +146,8 @@ void hc_handler_posix(int sig, siginfo_t* siginfo, void* context)
 #define hc_print(fmt, ...) printf(fmt, ##__VA_ARGS__); fprintf(fpCrash, fmt, ##__VA_ARGS__);
 #define hc_print_file(fmt, ...) fprintf(fpCrash, fmt, ##__VA_ARGS__);
 
-	char fnmBuffer[128];
-	sprintf(fnmBuffer, "/tmp/crash_%ld.log", time(0));
+	char fnmBuffer[256];
+	sprintf(fnmBuffer, HC_LOG_DESTINATION "/crash_%ld.log", time(0));
 
 	FILE* fpCrash = fopen(fnmBuffer, "w");
 
@@ -273,6 +285,7 @@ void hc_handler_posix(int sig, siginfo_t* siginfo, void* context)
 			unsigned char* compressed = (unsigned char*)dumpStackBegin;
 			int compressedSize = (int)(dumpStackEnd - dumpStackBegin);
 
+#ifndef HC_NO_COMPRESSION
 			if (_hc_dumpstack_compression)
 			{
 				compressed = (unsigned char*)malloc((size_t)(dumpStackEnd - dumpStackBegin));
@@ -286,6 +299,7 @@ void hc_handler_posix(int sig, siginfo_t* siginfo, void* context)
 					compressedSize = (int)(dumpStackEnd - dumpStackBegin);
 				}
 			}
+#endif
 
 			char* mem = b64_encode((unsigned char*)compressed, compressedSize);
 			int memlen = strlen(mem);
@@ -301,9 +315,11 @@ void hc_handler_posix(int sig, siginfo_t* siginfo, void* context)
 			}
 
 			free(mem);
+#ifndef HC_NO_COMPRESSION
 			if (compressed != dumpStackBegin) {
 				free(compressed);
 			}
+#endif
 		}
 	}
 
@@ -319,16 +335,20 @@ void hc_handler_posix(int sig, siginfo_t* siginfo, void* context)
 #undef hc_print
 }
 
+#ifndef HC_NO_COMPRESSION
 void hc_install(int dumpstack = hc_dumpstack_all, bool dumpstackCompression = true)
+#else
+void hc_install(int dumpstack = hc_dumpstack_all)
+#endif
 {
 	_hc_dumpstack_type = dumpstack;
+#ifndef HC_NO_COMPRESSION
 	_hc_dumpstack_compression = dumpstackCompression;
-
-	size_t altstacksize = MINSIGSTKSZ + 135 * 1000;
+#endif
 
 	stack_t ss;
-	ss.ss_sp = malloc(altstacksize);
-	ss.ss_size = altstacksize;
+	ss.ss_sp = malloc(HC_ALTSTACK_SIZE);
+	ss.ss_size = HC_ALTSTACK_SIZE;
 	ss.ss_flags = 0;
 
 	if (sigaltstack(&ss, 0) != 0) { err(1, "sigaltstack"); }
