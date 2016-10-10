@@ -14,7 +14,7 @@
 #include <signal.h>
 #include <err.h>
 
-#include <lz4hc.h>
+#include "miniz.c"
 
 /**
  * `b64.h' - b64
@@ -269,17 +269,19 @@ void hc_handler_posix(int sig, siginfo_t* siginfo, void* context)
 		} else {
 			hc_print("*** Stack memory: %p - %p\n", dumpStackBegin, dumpStackEnd);
 
-			char* compressed = (char*)dumpStackBegin;
+			unsigned char* compressed = (unsigned char*)dumpStackBegin;
 			int compressedSize = (int)(dumpStackEnd - dumpStackBegin);
 
 			if (_hc_dumpstack_compression)
 			{
-				compressed = (char*)malloc((size_t)(dumpStackEnd - dumpStackBegin));
-				compressedSize = LZ4_compress_HC((char*)dumpStackBegin, compressed, (int)(dumpStackEnd - dumpStackBegin), (int)(dumpStackEnd - dumpStackBegin), 16);
+				compressed = (unsigned char*)malloc((size_t)(dumpStackEnd - dumpStackBegin));
+				mz_ulong retSize = compressedSize;
+				int ret = mz_compress(compressed, &retSize, dumpStackBegin, (mz_ulong)(dumpStackEnd - dumpStackBegin));
+				compressedSize = retSize;
 
-				if (compressedSize == 0) {
-					hc_print("***   Compression failed!\n");
-					compressed = (char*)dumpStackBegin;
+				if (ret != MZ_OK) {
+					hc_print("***   Compression failed: %d\n", ret);
+					compressed = dumpStackBegin;
 					compressedSize = (int)(dumpStackEnd - dumpStackBegin);
 				}
 			}
@@ -298,7 +300,9 @@ void hc_handler_posix(int sig, siginfo_t* siginfo, void* context)
 			}
 
 			free(mem);
-			free(compressed);
+			if (compressed != dumpStackBegin) {
+				free(compressed);
+			}
 		}
 	}
 
@@ -332,11 +336,11 @@ void hc_install(int dumpstack = hc_dumpstack_fromsp, bool dumpstackCompression =
 	sig_action.sa_sigaction = hc_handler_posix;
 	sigemptyset(&sig_action.sa_mask);
 
-	#ifdef __APPLE__
+#ifdef __APPLE__
 	sig_action.sa_flags = SA_SIGINFO;
-	#else
+#else
 	sig_action.sa_flags = SA_SIGINFO | SA_ONSTACK;
-	#endif
+#endif
 
 	if (sigaction(SIGSEGV, &sig_action, 0) != 0) { err(1, "sigaction"); }
 	if (sigaction(SIGILL, &sig_action, 0) != 0) { err(1, "sigaction"); }
