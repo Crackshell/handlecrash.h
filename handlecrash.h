@@ -14,7 +14,7 @@
 #include <signal.h>
 #include <err.h>
 
-//#include <lz4hc.h>
+#include <lz4hc.h>
 
 /**
  * `b64.h' - b64
