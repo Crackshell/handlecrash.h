@@ -7,11 +7,113 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <time.h>
 #include <execinfo.h>
 #include <signal.h>
 #include <err.h>
+
+//#include <lz4hc.h>
+
+/**
+ * `b64.h' - b64
+ *
+ * copyright (c) 2014 joseph werle
+ */
+static const char b64_table[] = {
+	'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+	'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
+	'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
+	'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
+	'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
+	'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
+	'w', 'x', 'y', 'z', '0', '1', '2', '3',
+	'4', '5', '6', '7', '8', '9', '+', '/'
+};
+
+static char *b64_encode(const unsigned char *src, size_t len)
+{
+	int i = 0;
+	int j = 0;
+	char *enc = NULL;
+	size_t size = 0;
+	unsigned char buf[4];
+	unsigned char tmp[3];
+
+	// alloc
+	enc = (char *) malloc(0);
+	if (NULL == enc) { return NULL; }
+
+	// parse until end of source
+	while (len--) {
+		// read up to 3 bytes at a time into `tmp'
+		tmp[i++] = *(src++);
+
+		// if 3 bytes read then encode into `buf'
+		if (3 == i) {
+			buf[0] = (tmp[0] & 0xfc) >> 2;
+			buf[1] = ((tmp[0] & 0x03) << 4) + ((tmp[1] & 0xf0) >> 4);
+			buf[2] = ((tmp[1] & 0x0f) << 2) + ((tmp[2] & 0xc0) >> 6);
+			buf[3] = tmp[2] & 0x3f;
+
+			// allocate 4 new byts for `enc` and
+			// then translate each encoded buffer
+			// part by index from the base 64 index table
+			// into `enc' unsigned char array
+			enc = (char *) realloc(enc, size + 4);
+			for (i = 0; i < 4; ++i) {
+				enc[size++] = b64_table[buf[i]];
+			}
+
+			// reset index
+			i = 0;
+		}
+	}
+
+	// remainder
+	if (i > 0) {
+		// fill `tmp' with `\0' at most 3 times
+		for (j = i; j < 3; ++j) {
+			tmp[j] = '\0';
+		}
+
+		// perform same codec as above
+		buf[0] = (tmp[0] & 0xfc) >> 2;
+		buf[1] = ((tmp[0] & 0x03) << 4) + ((tmp[1] & 0xf0) >> 4);
+		buf[2] = ((tmp[1] & 0x0f) << 2) + ((tmp[2] & 0xc0) >> 6);
+		buf[3] = tmp[2] & 0x3f;
+
+		// perform same write to `enc` with new allocation
+		for (j = 0; (j < i + 1); ++j) {
+			enc = (char *) realloc(enc, size + 1);
+			enc[size++] = b64_table[buf[j]];
+		}
+
+		// while there is still a remainder
+		// append `=' to `enc'
+		while ((i++ < 3)) {
+			enc = (char *) realloc(enc, size + 1);
+			enc[size++] = '=';
+		}
+	}
+
+	// Make sure we have enough space to add '\0' character at end.
+	enc = (char *) realloc(enc, size + 1);
+	enc[size] = '\0';
+
+	return enc;
+}
+
+enum
+{
+	hc_dumpstack_none = 0,
+	hc_dumpstack_fromsp = 1,
+	hc_dumpstack_all = 2
+};
+
+static int _hc_dumpstack_type = hc_dumpstack_fromsp;
+static bool _hc_dumpstack_compression = true;
 
 #ifndef HC_MAX_STACK_FRAMES
 #define HC_MAX_STACK_FRAMES 64
@@ -121,6 +223,9 @@ void hc_handler_posix(int sig, siginfo_t* siginfo, void* context)
 
 	hc_print("***\n");
 
+	unsigned char* dumpStackBegin = 0;
+	unsigned char* dumpStackEnd = 0;
+
 	FILE* fpMaps = fopen("/proc/self/maps", "r");
 	if (fpMaps != 0) {
 		hc_print("*** Memory map:\n");
@@ -133,6 +238,21 @@ void hc_handler_posix(int sig, siginfo_t* siginfo, void* context)
 				break;
 			}
 			hc_print("***   %s", line);
+
+			if (_hc_dumpstack_type == hc_dumpstack_none) {
+				continue;
+			}
+			if (strstr(line, "[stack]") != 0) {
+				sscanf(line, "%p-%p ", &dumpStackBegin, &dumpStackEnd);
+
+				if (_hc_dumpstack_type == hc_dumpstack_fromsp) {
+#ifdef __LP64__
+					dumpStackBegin = (unsigned char*)RV(REG_RSP);
+#else
+					dumpStackBegin = (unsigned char*)RV(REG_ESP);
+#endif
+				}
+			}
 		}
 		if (line) {
 			free(line);
@@ -142,6 +262,45 @@ void hc_handler_posix(int sig, siginfo_t* siginfo, void* context)
 	}
 
 	hc_print("***\n");
+
+	if (dumpStackBegin != 0 && dumpStackEnd != 0) {
+		if (dumpStackBegin > dumpStackEnd) {
+			hc_print("*** Could not dump stack memory due to invalid pointers: %p > %p!\n", dumpStackBegin, dumpStackEnd);
+		} else {
+			hc_print("*** Stack memory: %p - %p\n", dumpStackBegin, dumpStackEnd);
+
+			char* compressed = (char*)dumpStackBegin;
+			int compressedSize = (int)(dumpStackEnd - dumpStackBegin);
+
+			if (_hc_dumpstack_compression)
+			{
+				compressed = (char*)malloc((size_t)(dumpStackEnd - dumpStackBegin));
+				compressedSize = LZ4_compress_HC((char*)dumpStackBegin, compressed, (int)(dumpStackEnd - dumpStackBegin), (int)(dumpStackEnd - dumpStackBegin), 16);
+
+				if (compressedSize == 0) {
+					hc_print("***   Compression failed!\n");
+					compressed = (char*)dumpStackBegin;
+					compressedSize = (int)(dumpStackEnd - dumpStackBegin);
+				}
+			}
+
+			char* mem = b64_encode((unsigned char*)compressed, compressedSize);
+			int memlen = strlen(mem);
+
+			char* memp = mem;
+			char membuffer[121];
+			membuffer[120] = '\0';
+			while (memlen > 0) {
+				memcpy(membuffer, memp, 120);
+				hc_print("***   %s\n", membuffer);
+				memp += 120;
+				memlen -= 120;
+			}
+
+			free(mem);
+			free(compressed);
+		}
+	}
 
 	fclose(fpCrash);
 
@@ -155,11 +314,16 @@ void hc_handler_posix(int sig, siginfo_t* siginfo, void* context)
 #undef hc_print
 }
 
-void hc_install()
+void hc_install(int dumpstack = hc_dumpstack_fromsp, bool dumpstackCompression = true)
 {
+	_hc_dumpstack_type = dumpstack;
+	_hc_dumpstack_compression = dumpstackCompression;
+
+	size_t altstacksize = SIGSTKSZ * 128;
+
 	stack_t ss;
-	ss.ss_sp = malloc(SIGSTKSZ);
-	ss.ss_size = SIGSTKSZ;
+	ss.ss_sp = malloc(altstacksize);
+	ss.ss_size = altstacksize;
 	ss.ss_flags = 0;
 
 	if (sigaltstack(&ss, 0) != 0) { err(1, "sigaltstack"); }
