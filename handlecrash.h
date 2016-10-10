@@ -318,7 +318,7 @@ void hc_handler_posix(int sig, siginfo_t* siginfo, void* context)
 #undef hc_print
 }
 
-void hc_install(int dumpstack = hc_dumpstack_fromsp, bool dumpstackCompression = true)
+void hc_install(int dumpstack = hc_dumpstack_all, bool dumpstackCompression = true)
 {
 	_hc_dumpstack_type = dumpstack;
 	_hc_dumpstack_compression = dumpstackCompression;
