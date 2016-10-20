@@ -2,7 +2,7 @@
 
 /***
  * handlecrash.h
- * https://github.com/angelog/handlecrash.h
+ * https://github.com/Crackshell/handlecrash.h
  */
 
 #include <stdio.h>
